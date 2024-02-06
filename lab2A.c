@@ -7,6 +7,7 @@
 #define NT 8
 
 int array[N];
+int thread_counts[NT]; // Global array for thread counts in Case 4
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void case1(int* array, long long size) {
@@ -88,6 +89,51 @@ void case3() {
     }
 }
 
+void* count3s_case4(void* arg) {
+    int thread_part = *((int*)arg);
+    int start = thread_part * (N / NT);
+    int end = (thread_part + 1) * (N / NT);
+
+    for (int i = start; i < end; i++) {
+        if (array[i] == 3) {
+            thread_counts[thread_part]++;
+        }
+    }
+    return NULL;
+}
+
+void case4() {
+    pthread_t threads[NT];
+    int thread_args[NT];
+
+    // Initialize thread_counts to 0
+    for (int i = 0; i < NT; i++) {
+        thread_counts[i] = 0;
+    }
+
+    for (int i = 0; i < NT; i++) {
+        thread_args[i] = i;
+        if (pthread_create(&threads[i], NULL, count3s_case4, (void*)&thread_args[i])) {
+            fprintf(stderr, "Error creating thread\n");
+            exit(1);
+        }
+    }
+
+    for (int i = 0; i < NT; i++) {
+        if (pthread_join(threads[i], NULL)) {
+            fprintf(stderr, "Error joining thread\n");
+            exit(2);
+        }
+    }
+
+    // Summing the counts from all threads
+    int total_count = 0;
+    for (int i = 0; i < NT; i++) {
+        total_count += thread_counts[i];
+    }
+    // Total count can be used or printed as required
+}
+
 void initializeArray(int* array, long long size) {
     for (long long i = 0; i < size; i++) {
         array[i] = rand() % 10;
@@ -127,6 +173,13 @@ int main() {
     gettimeofday(&end, NULL);
     elapsedTime = getTimeInMilliseconds(start, end);
     printf("Case 3 - Time taken: %lld milliseconds.\n", elapsedTime);
+
+    // Case 4: Parallel counting with private counters
+    gettimeofday(&start, NULL);
+    case4();
+    gettimeofday(&end, NULL);
+    elapsedTime = getTimeInMilliseconds(start, end);
+    printf("Case 4 - Time taken: %lld milliseconds.\n", elapsedTime);
 
     // Clean up
     pthread_mutex_destroy(&mutex);
